@@ -1,122 +1,84 @@
-import 'package:flutter/material.dart';
+// ============================================================
+// FILE: lib/main.dart
+//
+// PURPOSE: The entry point of the entire Flutter app.
+//
+// WHAT THIS FILE DOES:
+//   1. Starts the app with runApp()
+//   2. Sets up the global theme (colors, fonts) from AppTheme
+//   3. Sets up all named routes so the app knows which screen
+//      to show when you navigate to a route name
+//
+// This file should stay SMALL. The heavy work (screens, widgets)
+// lives in their own files. main.dart just wires everything up.
+// ============================================================
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+// ── Our own files ────────────────────────────────────────────
+import 'core/theme/app_theme.dart';
+import 'navigation/app_router.dart';
+
+// ── Screens — we import each one so we can map it to a route ─
+// Auth
+import 'features/auth/welcome_screen.dart';
+import 'features/auth/signup_screen.dart';
+import 'features/auth/login_screen.dart';
+// Navigation shell (main app)
+import 'navigation/main_shell.dart';
+
+// main() is the very first function Flutter calls.
 void main() {
-  runApp(const MyApp());
+  // Ensures Flutter is fully initialized before we do anything.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock the app to portrait mode only (like most phone apps).
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Start the app!
+  runApp(const YahwehApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// ── Root App Widget ───────────────────────────────────────────
+class YahwehApp extends StatelessWidget {
+  const YahwehApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
+      // App title (shown in task switcher on Android).
+      title: 'Yahweh',
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+      // Hide the red "DEBUG" banner in the top-right corner.
+      debugShowCheckedModeBanner: false,
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+      // Apply our custom theme from AppTheme.
+      theme: AppTheme.light,
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+      // The first screen the app shows.
+      // As we build more screens, we'll change this to the
+      // welcome screen or the home shell depending on login state.
+      initialRoute: AppRoutes.welcome,
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      // ── Route Map ──────────────────────────────────────────
+      // This is the "directory" of all screens.
+      // When you call Navigator.pushNamed(context, AppRoutes.login),
+      // Flutter looks it up here and shows LoginScreen.
+      //
+      // NOTE: We'll add more routes here as we build each phase.
+      // For now, only the welcome screen exists.
+      routes: {
+        AppRoutes.welcome:  (context) => const WelcomeScreen(),
+        AppRoutes.signup:   (context) => const SignupScreen(),
+        AppRoutes.login:    (context) => const LoginScreen(),
+        AppRoutes.home:     (context) => const MainShell(),
+        // Phase 2 will replace signup/login stubs with real screens
+        // Phase 3 will replace MainShell stub with real shell
+      },
     );
   }
 }
