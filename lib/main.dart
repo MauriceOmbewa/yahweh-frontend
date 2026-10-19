@@ -25,6 +25,7 @@ import 'navigation/app_router.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/auth/signup_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/timezone_screen.dart';
 // Navigation shell (main app)
 import 'navigation/main_shell.dart';
 
@@ -75,9 +76,8 @@ class YahwehApp extends StatelessWidget {
         AppRoutes.welcome:  (context) => const WelcomeScreen(),
         AppRoutes.signup:   (context) => const SignupScreen(),
         AppRoutes.login:    (context) => const LoginScreen(),
+        AppRoutes.timezone: (context) => const TimezoneScreen(),
         AppRoutes.home:     (context) => const MainShell(),
-        // Phase 2 will replace signup/login stubs with real screens
-        // Phase 3 will replace MainShell stub with real shell
       },
     );
   }
