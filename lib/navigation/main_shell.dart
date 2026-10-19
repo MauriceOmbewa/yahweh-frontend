@@ -180,9 +180,7 @@ class _Sidebar extends StatelessWidget {
             iconFill:  Iconsax.people,
             label:     'Friends',
             isActive:  false,
-            onTap: () {
-              // TODO: navigate to Friends (Phase 7)
-            },
+            onTap: () => Navigator.pushNamed(context, AppRoutes.friends),
           ),
           _SideNavItem(
             icon:      Iconsax.message,
