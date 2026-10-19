@@ -28,6 +28,8 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/timezone_screen.dart';
 // Navigation shell (main app)
 import 'navigation/main_shell.dart';
+// Settings
+import 'features/profile/settings_screen.dart';
 
 // main() is the very first function Flutter calls.
 void main() {
@@ -73,11 +75,12 @@ class YahwehApp extends StatelessWidget {
       // NOTE: We'll add more routes here as we build each phase.
       // For now, only the welcome screen exists.
       routes: {
-        AppRoutes.welcome:  (context) => const WelcomeScreen(),
-        AppRoutes.signup:   (context) => const SignupScreen(),
-        AppRoutes.login:    (context) => const LoginScreen(),
-        AppRoutes.timezone: (context) => const TimezoneScreen(),
-        AppRoutes.home:     (context) => const MainShell(),
+        AppRoutes.welcome:   (context) => const WelcomeScreen(),
+        AppRoutes.signup:    (context) => const SignupScreen(),
+        AppRoutes.login:     (context) => const LoginScreen(),
+        AppRoutes.timezone:  (context) => const TimezoneScreen(),
+        AppRoutes.home:      (context) => const MainShell(),
+        AppRoutes.settings:  (context) => const SettingsScreen(),
       },
     );
   }
