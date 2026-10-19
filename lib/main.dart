@@ -32,6 +32,8 @@ import 'navigation/main_shell.dart';
 import 'features/profile/settings_screen.dart';
 // Friends
 import 'features/friends/friends_screen.dart';
+// Profile
+import 'features/profile/other_profile_screen.dart';
 
 // main() is the very first function Flutter calls.
 void main() {
@@ -83,7 +85,8 @@ class YahwehApp extends StatelessWidget {
         AppRoutes.timezone:  (context) => const TimezoneScreen(),
         AppRoutes.home:      (context) => const MainShell(),
         AppRoutes.settings:  (context) => const SettingsScreen(),
-        AppRoutes.friends:   (context) => const FriendsScreen(),
+        AppRoutes.friends:      (context) => const FriendsScreen(),
+        AppRoutes.otherProfile: (context) => const OtherProfileScreen(),
       },
     );
   }

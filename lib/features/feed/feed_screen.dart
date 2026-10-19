@@ -30,6 +30,7 @@ import '../../core/widgets/user_avatar.dart';
 import '../../core/widgets/verse_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/user.dart';
+import '../../navigation/app_router.dart';
 
 class FeedScreen extends StatelessWidget {
   const FeedScreen({super.key});
@@ -166,7 +167,11 @@ class _FriendStoryItem extends StatelessWidget {
             size:           AppConstants.avatarSm + 8, // 44px
             isStreakActive: user.hasReadToday,
             onTap: () {
-              // TODO: Navigate to OtherProfileScreen (Phase 9)
+              Navigator.pushNamed(
+                context,
+                AppRoutes.otherProfile,
+                arguments: user,
+              );
             },
           ),
           const SizedBox(height: 4),
