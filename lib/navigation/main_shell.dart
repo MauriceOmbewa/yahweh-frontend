@@ -1,24 +1,25 @@
 // ============================================================
 // FILE: lib/navigation/main_shell.dart
 //
-// PURPOSE: The persistent scaffold that wraps all main tabs.
+// PURPOSE: The persistent scaffold that wraps all main screens.
 //
-// RESPONSIVE BEHAVIOUR:
+// ── INDEX MAP ────────────────────────────────────────────────
+//   0 = Feed       ← mobile bottom nav + wide sidebar
+//   1 = Read       ← mobile bottom nav + wide sidebar
+//   2 = Progress   ← mobile bottom nav + wide sidebar
+//   3 = Profile    ← mobile bottom nav + wide sidebar
+//   4 = Friends    ← WIDE SIDEBAR ONLY (not in mobile bottom nav)
+//   5 = Messages   ← WIDE SIDEBAR ONLY (not in mobile bottom nav)
 //
+// ── LAYOUTS ──────────────────────────────────────────────────
 //   Mobile (<700px):
-//     - Full screen content area (IndexedStack)
-//     - AppBottomNavBar at the bottom with centre "+" FAB
+//     IndexedStack (indices 0–3) + AppBottomNavBar
+//     Friends/Messages open as separate routes via Navigator
 //
-//   Wide (>=700px) — matches the PDF design exactly:
-//     - LEFT sidebar (fixed 220px): logo, nav links, "Share a verse"
-//       orange button, user avatar + Settings at the bottom
-//     - CENTRE content: the active tab screen (Feed, Read, etc.)
-//     - RIGHT panel (260px): streak buddies + today's goal ring
-//       (only shown on Feed tab — others get full width content)
-//
-// HOW TABS WORK:
-//   _currentIndex tracks which tab is active (0–3):
-//     0 = Feed, 1 = Read, 2 = Progress, 3 = Profile
+//   Wide (>=700px):
+//     Left sidebar (220px) — all 6 links
+//     Centre: IndexedStack (indices 0–5)
+//     Right panel: only shown on Feed (index 0)
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -36,8 +37,32 @@ import '../features/feed/feed_screen.dart';
 import '../features/read/read_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/friends/friends_screen.dart';
 import '../features/share/share_verse_screen.dart';
 import '../navigation/app_router.dart';
+
+// ── Placeholder for Messages (Phase 8) ───────────────────────
+class _MessagesPlaceholder extends StatelessWidget {
+  const _MessagesPlaceholder();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Iconsax.message, size: 64, color: AppColors.primaryPurple),
+            const SizedBox(height: 16),
+            Text('Messages', style: AppTextStyles.headingMedium),
+            const SizedBox(height: 8),
+            Text('Coming in Phase 8', style: AppTextStyles.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -47,14 +72,19 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  // 0 = Feed, 1 = Read, 2 = Progress, 3 = Profile
+  // Starts on Feed
   int _currentIndex = 0;
 
+  // ── All screens in index order ────────────────────────────
+  // Indices 0–3 are used by both mobile and wide.
+  // Indices 4–5 are wide-only (sidebar) — never shown in mobile bottom nav.
   static const List<Widget> _screens = [
-    FeedScreen(),
-    ReadScreen(),
-    ProgressScreen(),
-    ProfileScreen(),
+    FeedScreen(),               // 0
+    ReadScreen(),               // 1
+    ProgressScreen(),           // 2
+    ProfileScreen(),            // 3
+    FriendsScreen(),            // 4 — wide sidebar only
+    _MessagesPlaceholder(),     // 5 — wide sidebar only
   ];
 
   void _onTabTapped(int index) => setState(() => _currentIndex = index);
@@ -70,12 +100,20 @@ class _MainShellState extends State<MainShell> {
 
   // ════════════════════════════════════════════════════════
   //  MOBILE SHELL
+  //  Only uses indices 0–3. Friends/Messages open via routes.
   // ════════════════════════════════════════════════════════
   Widget _buildMobileShell() {
+    // If the user somehow ends up on a wide-only index on mobile,
+    // clamp back to Feed so the bottom nav doesn't break.
+    final mobileIndex = _currentIndex > 3 ? 0 : _currentIndex;
+
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(
+        index:    mobileIndex,
+        children: _screens.sublist(0, 4), // Only 0–3 on mobile
+      ),
       bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _currentIndex,
+        currentIndex: mobileIndex,
         onTap:        _onTabTapped,
         onShareTap:   _onShareTapped,
       ),
@@ -86,33 +124,33 @@ class _MainShellState extends State<MainShell> {
   //  WIDE / WEB SHELL — 3-column layout
   // ════════════════════════════════════════════════════════
   Widget _buildWideShell() {
+    // Right panel only visible on Feed
+    final bool showRightPanel = _currentIndex == 0;
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── LEFT: Sidebar navigation ─────────────────────
+          // ── LEFT: Sidebar ────────────────────────────────
           _Sidebar(
             currentIndex: _currentIndex,
             onTap:        _onTabTapped,
             onShareTap:   _onShareTapped,
           ),
 
-          // Thin divider line between sidebar and content
           Container(width: 1, color: AppColors.divider),
 
           // ── CENTRE: Active screen ─────────────────────────
           Expanded(
             child: IndexedStack(
               index:    _currentIndex,
-              children: _screens,
+              children: _screens, // All 6 screens available on wide
             ),
           ),
 
-          // ── RIGHT: Context panel (Feed tab only) ──────────
-          // On non-Feed tabs the right panel is hidden so the
-          // content area gets the full remaining width.
-          if (_currentIndex == 0) ...[
+          // ── RIGHT: Panel (Feed only) ─────────────────────
+          if (showRightPanel) ...[
             Container(width: 1, color: AppColors.divider),
             _RightPanel(),
           ],
@@ -155,53 +193,53 @@ class _Sidebar extends StatelessWidget {
 
           // ── Nav links ─────────────────────────────────────
           _SideNavItem(
-            icon:      Iconsax.home,
-            iconFill:  Iconsax.home_1,
-            label:     'Feed',
-            isActive:  currentIndex == 0,
-            onTap:     () => onTap(0),
+            icon:     Iconsax.home,
+            iconFill: Iconsax.home_1,
+            label:    'Feed',
+            isActive: currentIndex == 0,
+            onTap:    () => onTap(0),
           ),
           _SideNavItem(
-            icon:      Iconsax.book,
-            iconFill:  Iconsax.book_1,
-            label:     'Read',
-            isActive:  currentIndex == 1,
-            onTap:     () => onTap(1),
+            icon:     Iconsax.book,
+            iconFill: Iconsax.book_1,
+            label:    'Read',
+            isActive: currentIndex == 1,
+            onTap:    () => onTap(1),
           ),
           _SideNavItem(
-            icon:      Iconsax.chart,
-            iconFill:  Iconsax.chart_1,
-            label:     'Progress',
-            isActive:  currentIndex == 2,
-            onTap:     () => onTap(2),
+            icon:     Iconsax.chart,
+            iconFill: Iconsax.chart_1,
+            label:    'Progress',
+            isActive: currentIndex == 2,
+            onTap:    () => onTap(2),
           ),
           _SideNavItem(
-            icon:      Iconsax.people,
-            iconFill:  Iconsax.people,
-            label:     'Friends',
-            isActive:  false,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.friends),
+            icon:     Iconsax.people,
+            iconFill: Iconsax.people,
+            label:    'Friends',
+            // Index 4 = Friends in the wide shell
+            isActive: currentIndex == 4,
+            onTap:    () => onTap(4),
           ),
           _SideNavItem(
-            icon:      Iconsax.message,
-            iconFill:  Iconsax.message_tick,
-            label:     'Messages',
-            isActive:  false,
-            onTap: () {
-              // TODO: navigate to Messages (Phase 8)
-            },
+            icon:     Iconsax.message,
+            iconFill: Iconsax.message_tick,
+            label:    'Messages',
+            // Index 5 = Messages in the wide shell
+            isActive: currentIndex == 5,
+            onTap:    () => onTap(5),
           ),
           _SideNavItem(
-            icon:      Iconsax.user,
-            iconFill:  Iconsax.user_square,
-            label:     'Profile',
-            isActive:  currentIndex == 3,
-            onTap:     () => onTap(3),
+            icon:     Iconsax.user,
+            iconFill: Iconsax.user_square,
+            label:    'Profile',
+            isActive: currentIndex == 3,
+            onTap:    () => onTap(3),
           ),
 
           const SizedBox(height: 20),
 
-          // ── Share a verse button ───────────────────────────
+          // ── Share a verse button ──────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: AppButton(
@@ -211,10 +249,9 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          // Push user tile to the bottom
           const Spacer(),
 
-          // ── User avatar + Settings ─────────────────────────
+          // ── User avatar + Settings ────────────────────────
           _SidebarUserTile(
             onSettingsTap: () =>
                 Navigator.pushNamed(context, AppRoutes.settings),
@@ -245,14 +282,14 @@ class _SideNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap:     onTap,
-      behavior:  HitTestBehavior.opaque,
+      onTap:    onTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: AppConstants.animFast,
         margin:   const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         padding:  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color:        isActive
+          color: isActive
               ? AppColors.primaryPurple.withValues(alpha: 0.08)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(AppConstants.radiusMd),
@@ -268,12 +305,8 @@ class _SideNavItem extends StatelessWidget {
             Text(
               label,
               style: AppTextStyles.labelMedium.copyWith(
-                color: isActive
-                    ? AppColors.primaryPurple
-                    : AppColors.textMedium,
-                fontWeight: isActive
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+                color:      isActive ? AppColors.primaryPurple : AppColors.textMedium,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
@@ -329,8 +362,8 @@ class _RightPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
-      color: AppColors.backgroundLight,
+      width:   280,
+      color:   AppColors.backgroundLight,
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,14 +371,9 @@ class _RightPanel extends StatelessWidget {
           const SizedBox(height: 8),
           Text('Streak buddies', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 12),
-
-          // ── Streak buddy cards ───────────────────────────
           ...MockData.streakBuddies.map((buddy) =>
               _StreakBuddyCard(buddy: buddy)),
-
           const SizedBox(height: 16),
-
-          // ── Today's goal ring ────────────────────────────
           _TodaysGoalCard(),
         ],
       ),
@@ -353,10 +381,9 @@ class _RightPanel extends StatelessWidget {
   }
 }
 
-// ── Streak buddy card ─────────────────────────────────────────
+// ── Streak buddy card (right panel) ──────────────────────────
 class _StreakBuddyCard extends StatelessWidget {
-  final dynamic buddy; // StreakBuddy model
-
+  final dynamic buddy;
   const _StreakBuddyCard({required this.buddy});
 
   @override
@@ -376,7 +403,6 @@ class _StreakBuddyCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Overlapping avatars
               OverlappingAvatars(
                 leftInitials:  buddy.myInitials ?? 'MA',
                 rightInitials: buddy.partnerInitials,
@@ -401,7 +427,6 @@ class _StreakBuddyCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Flame icons + streak count
               Column(
                 children: [
                   Row(
@@ -423,8 +448,6 @@ class _StreakBuddyCard extends StatelessWidget {
               ),
             ],
           ),
-
-          // Show Nudge button only when partner is at risk
           if (isAtRisk && !buddy.nudgeSentToday) ...[
             const SizedBox(height: 10),
             AppButton(
@@ -439,7 +462,7 @@ class _StreakBuddyCard extends StatelessWidget {
   }
 }
 
-// ── Today's goal ring card ────────────────────────────────────
+// ── Today's goal ring ─────────────────────────────────────────
 class _TodaysGoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -454,27 +477,21 @@ class _TodaysGoalCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Circular progress indicator
           SizedBox(
             width:  56,
             height: 56,
-            child:  Stack(
+            child: Stack(
               alignment: Alignment.center,
               children: [
-                // Track (grey background ring)
                 CircularProgressIndicator(
-                  value:      1.0,
-                  strokeWidth: 6,
-                  color:      AppColors.divider,
+                  value: 1.0, strokeWidth: 6,
+                  color: AppColors.divider,
                 ),
-                // Progress (orange filled arc)
                 CircularProgressIndicator(
-                  value:       progress,
-                  strokeWidth: 6,
-                  color:       AppColors.orange,
+                  value: progress, strokeWidth: 6,
+                  color: AppColors.orange,
                   backgroundColor: Colors.transparent,
                 ),
-                // Percentage text in the centre
                 Text(
                   '${(progress * 100).round()}%',
                   style: AppTextStyles.labelSmall.copyWith(
@@ -486,19 +503,21 @@ class _TodaysGoalCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Today's goal",
-                  style: AppTextStyles.labelMedium.copyWith(fontSize: 13)),
-              const SizedBox(height: 2),
-              Text(
-                '${MockData.todayMinutesRead} of '
-                '${MockData.dailyGoalMinutes} minutes. '
-                '${progress >= 0.9 ? "Almost there." : "Keep going!"}',
-                style: AppTextStyles.bodySmall.copyWith(fontSize: 11),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Today's goal",
+                    style: AppTextStyles.labelMedium.copyWith(fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(
+                  '${MockData.todayMinutesRead} of '
+                  '${MockData.dailyGoalMinutes} minutes. '
+                  '${progress >= 0.9 ? "Almost there." : "Keep going!"}',
+                  style: AppTextStyles.bodySmall.copyWith(fontSize: 11),
+                ),
+              ],
+            ),
           ),
         ],
       ),
