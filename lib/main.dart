@@ -36,6 +36,8 @@ import 'features/friends/friends_screen.dart';
 import 'features/profile/other_profile_screen.dart';
 // Notifications
 import 'features/notifications/notifications_screen.dart';
+// Messages
+import 'features/messages/messages_screen.dart';
 
 // main() is the very first function Flutter calls.
 void main() {
@@ -90,6 +92,7 @@ class YahwehApp extends StatelessWidget {
         AppRoutes.friends:      (context) => const FriendsScreen(),
         AppRoutes.otherProfile:    (context) => const OtherProfileScreen(),
         AppRoutes.notifications:   (context) => const NotificationsScreen(),
+        AppRoutes.messages:        (context) => const MessagesScreen(),
       },
     );
   }

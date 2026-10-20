@@ -40,31 +40,11 @@ import '../features/progress/progress_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/friends/friends_screen.dart';
 import '../features/notifications/notifications_screen.dart';
+import '../features/messages/messages_screen.dart';
 import '../features/share/share_verse_screen.dart';
 import '../navigation/app_router.dart';
 
-// ── Placeholder for Messages (Phase 8) ───────────────────────
-class _MessagesPlaceholder extends StatelessWidget {
-  const _MessagesPlaceholder();
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Iconsax.message, size: 64, color: AppColors.primaryPurple),
-            const SizedBox(height: 16),
-            Text('Messages', style: AppTextStyles.headingMedium),
-            const SizedBox(height: 8),
-            Text('Coming in Phase 8', style: AppTextStyles.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── MessagesScreen replaces the old placeholder ──────────────
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -84,12 +64,15 @@ class _MainShellState extends State<MainShell> {
   // now needs a callback from this StatefulWidget's state.
   // We build it lazily in _buildScreens() instead.
   List<Widget> _buildScreens() => [
-    FeedScreen(onNotificationsTap: () => _onTabTapped(6)), // 0
+    FeedScreen(
+      onNotificationsTap: () => _onTabTapped(6),
+      onMessagesTap:      () => _onTabTapped(5),
+    ), // 0
     const ReadScreen(),               // 1
     const ProgressScreen(),           // 2
     const ProfileScreen(),            // 3
     const FriendsScreen(),            // 4 — wide sidebar only
-    const _MessagesPlaceholder(),     // 5 — wide sidebar only
+    const MessagesScreen(),           // 5 — wide sidebar only
     const NotificationsScreen(),      // 6 — bell icon
   ];
 
@@ -232,7 +215,6 @@ class _Sidebar extends StatelessWidget {
             icon:     Iconsax.message,
             iconFill: Iconsax.message_tick,
             label:    'Messages',
-            // Index 5 = Messages in the wide shell
             isActive: currentIndex == 5,
             onTap:    () => onTap(5),
           ),
