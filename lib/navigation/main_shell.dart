@@ -124,8 +124,8 @@ class _MainShellState extends State<MainShell> {
   //  WIDE / WEB SHELL — 3-column layout
   // ════════════════════════════════════════════════════════
   Widget _buildWideShell() {
-    // Right panel only visible on Feed
-    final bool showRightPanel = _currentIndex == 0;
+    // Right panel visible on Feed (0) AND Friends (4)
+    final bool showRightPanel = _currentIndex == 0 || _currentIndex == 4;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
