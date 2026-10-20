@@ -3,21 +3,13 @@
 //
 // PURPOSE: Shows all notifications grouped by TODAY / YESTERDAY.
 //
-// DESIGN NOTES (from the screenshot):
-//   - Dark background (#0F0F1A) — different from every other screen
-//   - "Notifications" title in white, left-aligned
-//   - "Mark all read" in purple/blue, right-aligned
-//   - TODAY / YESTERDAY section labels in orange uppercase
-//   - Each notification row:
-//       [Avatar + badge]  [Bold name] normal text   [time]
-//   - Unread rows get a subtle left accent bar
+// LAYOUT (same pattern as Friends):
+//   - Part of the shell's IndexedStack (index 6)
+//   - Wide: loads in centre panel, no right panel
+//   - Mobile: no back arrow (it's a shell tab equivalent,
+//     accessed via the bell icon in the feed app bar)
 //
-// RESPONSIVE:
-//   - Same Center + ConstrainedBox(maxWidth: 680) pattern
-//   - Accessed via Navigator.pushNamed (not a shell tab)
-//   - Has a back arrow on wide screens
-//
-// STATE: Stateful because "Mark all read" changes local state.
+// THEME: Light (backgroundLight, textDark) — same as all other screens.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -37,7 +29,6 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Local mutable copy so "Mark all read" can update the UI
   late List<AppNotification> _notifications;
 
   @override
@@ -46,7 +37,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _notifications = List.from(MockData.notifications);
   }
 
-  // ── Mark all as read ─────────────────────────────────────
   void _markAllRead() {
     setState(() {
       _notifications = _notifications
@@ -58,13 +48,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 fromUserStreak:   n.fromUserStreak,
                 message:          n.message,
                 receivedAt:       n.receivedAt,
-                isRead:           true, // ← mark read
+                isRead:           true,
               ))
           .toList();
     });
   }
 
-  // ── Split into today / yesterday ──────────────────────────
   List<AppNotification> get _todayNotifs =>
       _notifications.where((n) => n.isToday).toList();
 
@@ -74,70 +63,47 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight, // ← light background
 
       // ── App Bar ─────────────────────────────────────────────
       appBar: AppBar(
-        backgroundColor:       AppColors.backgroundDark,
-        elevation:              0,
-        scrolledUnderElevation: 0,
-        // Back arrow — white on dark background
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: AppColors.white,
-            size:  18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+        backgroundColor:        AppColors.backgroundLight,
+        elevation:               0,
+        scrolledUnderElevation:  0,
+        automaticallyImplyLeading: false, // No back arrow — shell screen
         title: Text(
           'Notifications',
-          style: AppTextStyles.headingLarge.copyWith(
-            color: AppColors.white,
-          ),
+          style: AppTextStyles.headingLarge, // dark text on light bg
         ),
-        titleSpacing: 0,
-        // "Mark all read" link on the right
         actions: [
           TextButton(
             onPressed: _markAllRead,
             child: Text(
               'Mark all read',
               style: AppTextStyles.labelMedium.copyWith(
-                color: AppColors.primaryPurple.withValues(alpha: 0.85),
+                color: AppColors.primaryPurple,
               ),
             ),
           ),
         ],
       ),
 
-      // ── Body ─────────────────────────────────────────────────
+      // ── Body: centred + max-width (same as Friends) ──────────
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
           child: ListView(
-            // ListView is better than SingleChildScrollView here
-            // because it lazily renders items — better performance
-            // when there are many notifications.
             children: [
-              // ── TODAY section ─────────────────────────────
               if (_todayNotifs.isNotEmpty) ...[
                 _SectionLabel(label: 'TODAY'),
-                ..._todayNotifs.map(
-                  (n) => _NotificationRow(notification: n),
-                ),
+                ..._todayNotifs.map((n) => _NotificationRow(notification: n)),
               ],
-
-              // ── YESTERDAY section ─────────────────────────
               if (_yesterdayNotifs.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _SectionLabel(label: 'YESTERDAY'),
                 ..._yesterdayNotifs.map(
-                  (n) => _NotificationRow(notification: n),
-                ),
+                    (n) => _NotificationRow(notification: n)),
               ],
-
-              // Bottom breathing room
               const SizedBox(height: AppConstants.paddingXl),
             ],
           ),
@@ -147,9 +113,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-// ════════════════════════════════════════════════════════════
-//  SECTION LABEL  ("TODAY" / "YESTERDAY")
-// ════════════════════════════════════════════════════════════
+// ── Section label ("TODAY" / "YESTERDAY") ────────────────────
 class _SectionLabel extends StatelessWidget {
   final String label;
   const _SectionLabel({required this.label});
@@ -163,18 +127,12 @@ class _SectionLabel extends StatelessWidget {
         AppConstants.paddingMd,
         AppConstants.paddingSm,
       ),
-      child: Text(
-        label,
-        // Orange uppercase caps — sectionTitleCaps style
-        style: AppTextStyles.sectionTitleCaps,
-      ),
+      child: Text(label, style: AppTextStyles.sectionTitleCaps),
     );
   }
 }
 
-// ════════════════════════════════════════════════════════════
-//  NOTIFICATION ROW
-// ════════════════════════════════════════════════════════════
+// ── Notification row ──────────────────────────────────────────
 class _NotificationRow extends StatelessWidget {
   final AppNotification notification;
   const _NotificationRow({required this.notification});
@@ -182,8 +140,12 @@ class _NotificationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // Unread rows: subtle left blue accent bar
+      // Unread: subtle left purple accent bar
       decoration: BoxDecoration(
+        // Light lavender tint on unread rows
+        color: notification.isRead
+            ? Colors.transparent
+            : AppColors.primaryPurple.withValues(alpha: 0.04),
         border: notification.isRead
             ? null
             : const Border(
@@ -196,33 +158,31 @@ class _NotificationRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
-          vertical:   12,
+          vertical:   14,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Avatar with streak badge ──────────────────
+            // Avatar — no ring (just a regular avatar)
             UserAvatar(
               initials:    notification.fromUserInitials,
               streakCount: notification.fromUserStreak,
               size:        AppConstants.avatarMd,
-              showRing:    false, // No ring in notifications
+              showRing:    false,
             ),
             const SizedBox(width: 14),
 
-            // ── Notification text ─────────────────────────
+            // Notification text (bold name + normal rest)
             Expanded(
               child: _NotificationText(notification: notification),
             ),
 
             const SizedBox(width: 10),
 
-            // ── Time ago ──────────────────────────────────
+            // Time ago — right-aligned
             Text(
               notification.timeAgo,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textMedium,
-              ),
+              style: AppTextStyles.bodySmall,
             ),
           ],
         ),
@@ -231,40 +191,32 @@ class _NotificationRow extends StatelessWidget {
   }
 }
 
-// ── Notification text with bold name ─────────────────────────
-// Renders e.g.:  "Amina reacted Amen to your post"
-// where "Amina" is bold white and the rest is normal grey.
+// ── Bold name + normal message text ──────────────────────────
 class _NotificationText extends StatelessWidget {
   final AppNotification notification;
   const _NotificationText({required this.notification});
 
   @override
   Widget build(BuildContext context) {
-    // Split the message to bold the first word (the user's name).
-    // e.g. "Amina reacted Amen to your post"
-    //   → bold "Amina" + normal " reacted Amen to your post"
-    final String fullMessage = notification.message;
-    final String name        = notification.fromUserName;
-    final String rest        = fullMessage.startsWith(name)
-        ? fullMessage.substring(name.length)
-        : fullMessage;
+    final String name = notification.fromUserName;
+    final String rest = notification.message.startsWith(name)
+        ? notification.message.substring(name.length)
+        : notification.message;
 
     return RichText(
       text: TextSpan(
         children: [
-          // Bold name
           TextSpan(
             text:  name,
             style: AppTextStyles.bodyMedium.copyWith(
-              color:      AppColors.white,
+              color:      AppColors.textDark,
               fontWeight: FontWeight.w700,
             ),
           ),
-          // Rest of the message
           TextSpan(
             text:  rest,
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.white.withValues(alpha: 0.8),
+              color: AppColors.textDark,
             ),
           ),
         ],

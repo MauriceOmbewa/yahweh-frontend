@@ -33,7 +33,12 @@ import '../../models/user.dart';
 import '../../navigation/app_router.dart';
 
 class FeedScreen extends StatelessWidget {
-  const FeedScreen({super.key});
+  // Optional callback — when provided (from MainShell on wide screens),
+  // the bell icon switches to the Notifications panel in the shell.
+  // When null (e.g. opened standalone), it falls back to pushing a route.
+  final VoidCallback? onNotificationsTap;
+
+  const FeedScreen({super.key, this.onNotificationsTap});
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +72,15 @@ class FeedScreen extends StatelessWidget {
             count: MockData.notifications
                 .where((n) => !n.isRead)
                 .length,
-            onTap: () => Navigator.pushNamed(
-              context,
-              AppRoutes.notifications,
-            ),
+            onTap: () {
+              if (onNotificationsTap != null) {
+                // Shell is available — switch panel in place
+                onNotificationsTap!();
+              } else {
+                // Fallback: push as a route
+                Navigator.pushNamed(context, AppRoutes.notifications);
+              }
+            },
           ),
           const SizedBox(width: 4),
         ],

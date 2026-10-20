@@ -4,12 +4,13 @@
 // PURPOSE: The persistent scaffold that wraps all main screens.
 //
 // ── INDEX MAP ────────────────────────────────────────────────
-//   0 = Feed       ← mobile bottom nav + wide sidebar
-//   1 = Read       ← mobile bottom nav + wide sidebar
-//   2 = Progress   ← mobile bottom nav + wide sidebar
-//   3 = Profile    ← mobile bottom nav + wide sidebar
-//   4 = Friends    ← WIDE SIDEBAR ONLY (not in mobile bottom nav)
-//   5 = Messages   ← WIDE SIDEBAR ONLY (not in mobile bottom nav)
+//   0 = Feed          ← mobile bottom nav + wide sidebar
+//   1 = Read          ← mobile bottom nav + wide sidebar
+//   2 = Progress      ← mobile bottom nav + wide sidebar
+//   3 = Profile       ← mobile bottom nav + wide sidebar
+//   4 = Friends       ← WIDE SIDEBAR ONLY
+//   5 = Messages      ← WIDE SIDEBAR ONLY
+//   6 = Notifications ← bell icon tap (both mobile + wide)
 //
 // ── LAYOUTS ──────────────────────────────────────────────────
 //   Mobile (<700px):
@@ -38,6 +39,7 @@ import '../features/read/read_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/friends/friends_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/share/share_verse_screen.dart';
 import '../navigation/app_router.dart';
 
@@ -78,13 +80,17 @@ class _MainShellState extends State<MainShell> {
   // ── All screens in index order ────────────────────────────
   // Indices 0–3 are used by both mobile and wide.
   // Indices 4–5 are wide-only (sidebar) — never shown in mobile bottom nav.
-  static const List<Widget> _screens = [
-    FeedScreen(),               // 0
-    ReadScreen(),               // 1
-    ProgressScreen(),           // 2
-    ProfileScreen(),            // 3
-    FriendsScreen(),            // 4 — wide sidebar only
-    _MessagesPlaceholder(),     // 5 — wide sidebar only
+  // _screens can no longer be a static const list because FeedScreen
+  // now needs a callback from this StatefulWidget's state.
+  // We build it lazily in _buildScreens() instead.
+  List<Widget> _buildScreens() => [
+    FeedScreen(onNotificationsTap: () => _onTabTapped(6)), // 0
+    const ReadScreen(),               // 1
+    const ProgressScreen(),           // 2
+    const ProfileScreen(),            // 3
+    const FriendsScreen(),            // 4 — wide sidebar only
+    const _MessagesPlaceholder(),     // 5 — wide sidebar only
+    const NotificationsScreen(),      // 6 — bell icon
   ];
 
   void _onTabTapped(int index) => setState(() => _currentIndex = index);
@@ -110,7 +116,7 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       body: IndexedStack(
         index:    mobileIndex,
-        children: _screens.sublist(0, 4), // Only 0–3 on mobile
+        children: _buildScreens().sublist(0, 4), // Only 0–3 on mobile
       ),
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: mobileIndex,
@@ -145,7 +151,7 @@ class _MainShellState extends State<MainShell> {
           Expanded(
             child: IndexedStack(
               index:    _currentIndex,
-              children: _screens, // All 6 screens available on wide
+              children: _buildScreens(), // All 7 screens on wide
             ),
           ),
 
