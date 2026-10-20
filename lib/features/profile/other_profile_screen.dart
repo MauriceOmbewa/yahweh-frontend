@@ -88,7 +88,11 @@ class OtherProfileScreen extends StatelessWidget {
       ),
 
       // ── Scrollable body ──────────────────────────────────────
-      body: SingleChildScrollView(
+      // Same pattern: Center + ConstrainedBox caps at 680px.
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
         ),
@@ -203,9 +207,11 @@ class OtherProfileScreen extends StatelessWidget {
               ),
 
             const SizedBox(height: AppConstants.paddingXl),
-          ],
-        ),
-      ),
+          ],        // Column children
+        ),          // Column
+      ),            // SingleChildScrollView
+        ),          // ConstrainedBox
+      ),            // Center
     );
   }
 }

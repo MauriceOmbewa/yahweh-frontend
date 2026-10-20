@@ -125,7 +125,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
 
       // ── Scrollable body ──────────────────────────────────────
-      body: SingleChildScrollView(
+      // Center + ConstrainedBox caps the content at 680px on wide
+      // screens so it doesn't stretch uncomfortably on a browser.
+      // On mobile the ConstrainedBox has no effect (screen < 680px).
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
         ),
@@ -188,9 +194,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
             // Bottom padding so last card isn't flush with nav bar
             const SizedBox(height: AppConstants.paddingXl),
-          ],
-        ),
-      ),
+          ],        // Column children
+        ),          // Column
+      ),            // SingleChildScrollView
+        ),          // ConstrainedBox
+      ),            // Center
     );
   }
 }
