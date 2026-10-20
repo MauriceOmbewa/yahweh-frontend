@@ -67,9 +67,10 @@ class FeedScreen extends StatelessWidget {
             count: MockData.notifications
                 .where((n) => !n.isRead)
                 .length,
-            onTap: () {
-              // TODO: Navigate to Notifications (Phase 7)
-            },
+            onTap: () => Navigator.pushNamed(
+              context,
+              AppRoutes.notifications,
+            ),
           ),
           const SizedBox(width: 4),
         ],
