@@ -71,9 +71,15 @@ class _MainShellState extends State<MainShell> {
     const ReadScreen(),               // 1
     const ProgressScreen(),           // 2
     const ProfileScreen(),            // 3
-    const FriendsScreen(),            // 4 — wide sidebar only
-    const MessagesScreen(),           // 5 — wide sidebar only
-    const NotificationsScreen(),      // 6 — bell icon
+    FriendsScreen(
+      onBack: () => _onTabTapped(0),  // 4 — back goes to Feed on mobile
+    ),
+    MessagesScreen(
+      onBack: () => _onTabTapped(0),  // 5 — back goes to Feed on mobile
+    ),
+    NotificationsScreen(
+      onBack: () => _onTabTapped(0),  // 6 — back goes to Feed on mobile
+    ),
   ];
 
   void _onTabTapped(int index) => setState(() => _currentIndex = index);
@@ -89,23 +95,28 @@ class _MainShellState extends State<MainShell> {
 
   // ════════════════════════════════════════════════════════
   //  MOBILE SHELL
-  //  Only uses indices 0–3. Friends/Messages open via routes.
+  //
+  //  Indices 0–3: bottom nav tabs (Feed, Read, Progress, Profile)
+  //  Indices 4–6: full-screen overlays (Friends, Messages, Notifications)
+  //               shown without the bottom nav bar, with a back arrow.
   // ════════════════════════════════════════════════════════
   Widget _buildMobileShell() {
-    // If the user somehow ends up on a wide-only index on mobile,
-    // clamp back to Feed so the bottom nav doesn't break.
-    final mobileIndex = _currentIndex > 3 ? 0 : _currentIndex;
+    // Indices 4+ are "overlay" screens on mobile — shown without bottom nav.
+    final bool isOverlay = _currentIndex > 3;
 
     return Scaffold(
       body: IndexedStack(
-        index:    mobileIndex,
-        children: _buildScreens().sublist(0, 4), // Only 0–3 on mobile
+        index:    _currentIndex,
+        children: _buildScreens(), // All 7 screens in the stack
       ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: mobileIndex,
-        onTap:        _onTabTapped,
-        onShareTap:   _onShareTapped,
-      ),
+      // Hide bottom nav when showing overlay screens (Friends/Messages/Notifications)
+      bottomNavigationBar: isOverlay
+          ? null
+          : AppBottomNavBar(
+              currentIndex: _currentIndex,
+              onTap:        _onTabTapped,
+              onShareTap:   _onShareTapped,
+            ),
     );
   }
 

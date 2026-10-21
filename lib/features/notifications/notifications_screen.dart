@@ -22,7 +22,8 @@ import '../../data/mock_data.dart';
 import '../../models/app_notification.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  final VoidCallback? onBack;
+  const NotificationsScreen({super.key, this.onBack});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -70,7 +71,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor:        AppColors.backgroundLight,
         elevation:               0,
         scrolledUnderElevation:  0,
-        automaticallyImplyLeading: false, // No back arrow — shell screen
+        automaticallyImplyLeading: false,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textDark, size: 18),
+                onPressed: widget.onBack,
+              )
+            : null,
         title: Text(
           'Notifications',
           style: AppTextStyles.headingLarge, // dark text on light bg

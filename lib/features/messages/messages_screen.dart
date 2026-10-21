@@ -28,7 +28,8 @@ import '../../models/message.dart';
 import 'chat_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
+  final VoidCallback? onBack;
+  const MessagesScreen({super.key, this.onBack});
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -70,6 +71,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
         elevation:                 0,
         scrolledUnderElevation:    0,
         automaticallyImplyLeading: false,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textDark, size: 18),
+                onPressed: widget.onBack,
+              )
+            : null,
         title: Text('Messages', style: AppTextStyles.headingLarge),
         actions: [
           // Compose / pencil icon — top right

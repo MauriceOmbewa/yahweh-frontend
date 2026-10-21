@@ -35,7 +35,11 @@ import 'widgets/streak_buddy_card.dart';
 import 'widgets/friend_request_card.dart';
 
 class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({super.key});
+  /// On mobile: called when the back arrow is tapped (returns to Feed).
+  /// On wide: null — no back arrow shown.
+  final VoidCallback? onBack;
+
+  const FriendsScreen({super.key, this.onBack});
 
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
@@ -120,7 +124,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
         backgroundColor:        AppColors.backgroundLight,
         elevation:               0,
         scrolledUnderElevation:  0,
-        automaticallyImplyLeading: false, // Hide default back arrow
+        // Show back arrow on mobile (onBack provided), hide on wide sidebar
+        automaticallyImplyLeading: false,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textDark, size: 18),
+                onPressed: widget.onBack,
+              )
+            : null,
         title: Text('Friends', style: AppTextStyles.headingLarge),
       ),
 
