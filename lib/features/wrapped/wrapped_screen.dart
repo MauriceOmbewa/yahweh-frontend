@@ -3,35 +3,24 @@
 //
 // PURPOSE: The "Yahweh Wrapped" weekly story slides.
 //
-// HOW IT WORKS:
-//   - A PageView with 6 full-screen slides
-//   - Tapping left half → previous slide
-//   - Tapping right half → next slide
-//   - Swipe left/right also works (PageView default)
-//   - Progress bar at the top shows current position
-//   - Each slide has its own gradient background + content
+// RESPONSIVE:
+//   Mobile: Full-screen PageView, tap left/right to navigate,
+//           progress bar at top.
 //
-// SLIDES:
-//   0 — YOUR WEEK          (chapters, hours, days)
-//   1 — DAYS YOU SHOWED UP (day circles + checkmarks)
-//   2 — YOUR PEAK HOUR     (clock visual + label)
-//   3 — YOUR TOP BOOK      (book name + progress bar)
-//   4 — STREAK ACHIEVEMENT (flame + "7-day streak")
-//   5 — WRAPPED SUMMARY    (orange share card + Done)
-//
-// HOW TO OPEN:
-//   Navigator.push(context, MaterialPageRoute(
-//     builder: (_) => const WrappedScreen()))
+//   Wide:   Carousel layout matching the web screenshot —
+//           centre card is large, side cards peek in at 60% scale,
+//           prev/next arrow buttons on the sides,
+//           "Share your Wrapped" button below the carousel.
 // ============================================================
 
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/utils/responsive.dart';
 import '../../data/mock_data.dart';
 
 class WrappedScreen extends StatefulWidget {
@@ -42,7 +31,9 @@ class WrappedScreen extends StatefulWidget {
 }
 
 class _WrappedScreenState extends State<WrappedScreen> {
-  final _pageController = PageController();
+  final _pageController = PageController(
+    viewportFraction: 0.7, // lets side cards peek in on wide
+  );
   int _currentPage      = 0;
   static const int _totalPages = 6;
 
@@ -70,49 +61,187 @@ class _WrappedScreenState extends State<WrappedScreen> {
     }
   }
 
+  List<Widget> get _slides => [
+    _SlideYourWeek(),
+    _SlideDaysShowedUp(),
+    _SlidePeakHour(),
+    _SlideTopBook(),
+    _SlideStreakAchievement(),
+    _SlideWrappedSummary(onDone: () => Navigator.pop(context)),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final bool isWide = Responsive.isWide(context);
+
     return Scaffold(
-      body: GestureDetector(
-        // Tap left half → previous, tap right half → next
-        onTapUp: (details) {
-          final double halfW =
-              MediaQuery.of(context).size.width / 2;
-          if (details.globalPosition.dx < halfW) {
-            _goPrev();
-          } else {
-            _goNext();
-          }
-        },
-        child: Stack(
-          children: [
-            // ── The slides ─────────────────────────────────
-            PageView(
-              controller:    _pageController,
-              onPageChanged: (i) => setState(() => _currentPage = i),
+      // Dark background behind the cards on both layouts —
+      // this is intentional: it's the "cinematic" Wrapped experience,
+      // not a regular app screen.
+      backgroundColor: const Color(0xFF0F0A1E),
+      body: isWide ? _buildWideLayout() : _buildMobileLayout(),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  MOBILE: full-screen tap-to-advance
+  // ════════════════════════════════════════════════════════
+  Widget _buildMobileLayout() {
+    return GestureDetector(
+      onTapUp: (details) {
+        final double halfW = MediaQuery.of(context).size.width / 2;
+        if (details.globalPosition.dx < halfW) {
+          _goPrev();
+        } else {
+          _goNext();
+        }
+      },
+      child: Stack(
+        children: [
+          PageView(
+            controller:    _pageController,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            children:      _slides,
+          ),
+          Positioned(
+            top:   MediaQuery.of(context).padding.top + 12,
+            left:  16,
+            right: 16,
+            child: _ProgressBar(current: _currentPage, total: _totalPages),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  WIDE: Carousel with prev/next arrows + side cards
+  // ════════════════════════════════════════════════════════
+  Widget _buildWideLayout() {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Progress bar at top
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: _ProgressBar(current: _currentPage, total: _totalPages),
+          ),
+
+          // Carousel row — arrows + PageView
+          Expanded(
+            child: Row(
               children: [
-                _SlideYourWeek(),
-                _SlideDaysShowedUp(),
-                _SlidePeakHour(),
-                _SlideTopBook(),
-                _SlideStreakAchievement(),
-                _SlideWrappedSummary(
-                  onDone: () => Navigator.pop(context),
+                // Left arrow
+                _ArrowButton(
+                  icon:      Icons.chevron_left_rounded,
+                  onTap:     _goPrev,
+                  enabled:   _currentPage > 0,
+                ),
+
+                // Sliding cards
+                Expanded(
+                  child: PageView.builder(
+                    controller:    _pageController,
+                    onPageChanged: (i) =>
+                        setState(() => _currentPage = i),
+                    itemCount:     _totalPages,
+                    itemBuilder:   (_, i) {
+                      // Scale down non-active cards slightly
+                      return AnimatedBuilder(
+                        animation: _pageController,
+                        builder: (_, child) {
+                          double scale = 0.88;
+                          if (_pageController.position.haveDimensions) {
+                            final double diff =
+                                (_pageController.page! - i).abs();
+                            scale = (1 - diff * 0.12).clamp(0.88, 1.0);
+                          } else if (i == 0) {
+                            scale = 1.0;
+                          }
+                          return Transform.scale(
+                            scale: scale,
+                            child: child,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 16),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: _slides[i],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Right arrow
+                _ArrowButton(
+                  icon:    Icons.chevron_right_rounded,
+                  onTap:   _goNext,
+                  enabled: _currentPage < _totalPages - 1,
                 ),
               ],
             ),
+          ),
 
-            // ── Progress bar overlay (top) ─────────────────
-            Positioned(
-              top:   MediaQuery.of(context).padding.top + 12,
-              left:  16,
-              right: 16,
-              child: _ProgressBar(
-                current: _currentPage,
-                total:   _totalPages,
-              ),
+          // Share button below carousel
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppConstants.paddingXl, 8,
+                AppConstants.paddingXl, AppConstants.paddingLg),
+            child: AppButton(
+              label:  'Share your Wrapped',
+              onTap:  () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content:  Text('Sharing coming soon!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              height: AppConstants.buttonHeightSm,
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Arrow button ──────────────────────────────────────────────
+class _ArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  const _ArrowButton({
+    required this.icon,
+    required this.onTap,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width:  52,
+        height: 52,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color:  enabled
+              ? Colors.white.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.05),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: enabled
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.2),
+          size: 28,
         ),
       ),
     );
@@ -136,9 +265,9 @@ class _ProgressBar extends StatelessWidget {
             height: 3,
             margin: const EdgeInsets.symmetric(horizontal: 2),
             decoration: BoxDecoration(
-              color:        i <= current
-                  ? AppColors.white
-                  : AppColors.white.withValues(alpha: 0.3),
+              color: i <= current
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -149,7 +278,7 @@ class _ProgressBar extends StatelessWidget {
 }
 
 // ════════════════════════════════════════════════════════════
-//  SLIDE BASE — wraps content with a gradient background
+//  SLIDE BASE
 // ════════════════════════════════════════════════════════════
 class _SlideBase extends StatelessWidget {
   final List<Color> gradientColors;
@@ -175,7 +304,6 @@ class _SlideBase extends StatelessWidget {
   }
 }
 
-// ── Small label above stats ───────────────────────────────────
 class _SlideLabel extends StatelessWidget {
   final String text;
   const _SlideLabel({required this.text});
@@ -185,18 +313,16 @@ class _SlideLabel extends StatelessWidget {
     return Text(
       text,
       style: AppTextStyles.sectionTitleCaps.copyWith(
-        color:         AppColors.white.withValues(alpha: 0.6),
+        color:         Colors.white.withValues(alpha: 0.6),
         letterSpacing: 2.0,
       ),
     );
   }
 }
 
-// ── Big stat number ───────────────────────────────────────────
 class _BigStat extends StatelessWidget {
   final String value;
   final String label;
-
   const _BigStat({required this.value, required this.label});
 
   @override
@@ -224,17 +350,11 @@ class _SlideYourWeek extends StatelessWidget {
         children: [
           const _SlideLabel(text: 'YOUR WEEK'),
           const SizedBox(height: 32),
-          _BigStat(
-              value: '${MockData.chaptersThisWeek}',
-              label: 'chapters'),
+          _BigStat(value: '${MockData.chaptersThisWeek}', label: 'chapters'),
           const SizedBox(height: 32),
-          _BigStat(
-              value: '${MockData.totalHours}h',
-              label: 'with scripture'),
+          _BigStat(value: '${MockData.totalHours}h', label: 'with scripture'),
           const SizedBox(height: 32),
-          _BigStat(
-              value: '6/7',
-              label: 'days read'),
+          const _BigStat(value: '6/7', label: 'days read'),
         ],
       ),
     );
@@ -245,22 +365,12 @@ class _SlideYourWeek extends StatelessWidget {
 //  SLIDE 1 — DAYS YOU SHOWED UP
 // ════════════════════════════════════════════════════════════
 class _SlideDaysShowedUp extends StatelessWidget {
-  // true = read that day, false = missed
-  static const List<bool> _days = [
-    true,  // Mon
-    true,  // Tue
-    true,  // Wed
-    false, // Thu — missed
-    true,  // Fri
-    true,  // Sat
-    true,  // Sun
-  ];
+  static const List<bool>   _days   = [true, true, true, false, true, true, true];
   static const List<String> _labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   @override
   Widget build(BuildContext context) {
     final int readCount = _days.where((d) => d).length;
-
     return _SlideBase(
       gradientColors: const [Color(0xFF2D1B69), Color(0xFF1A0F4A)],
       child: Column(
@@ -268,52 +378,37 @@ class _SlideDaysShowedUp extends StatelessWidget {
         children: [
           const _SlideLabel(text: 'DAYS YOU SHOWED UP'),
           const SizedBox(height: 24),
-          Text(
-            _numberToWords(readCount),
-            style: AppTextStyles.wrappedStat.copyWith(fontSize: 48),
-          ),
+          Text(_numberToWords(readCount),
+              style: AppTextStyles.wrappedStat.copyWith(fontSize: 40),
+              textAlign: TextAlign.center),
           const SizedBox(height: 24),
-          // Day circles row
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(7, (i) {
-              final bool read = _days[i];
-              return _DayCircle(
-                  label: _labels[i], isRead: read);
-            }),
+            children: List.generate(7, (i) =>
+                _DayCircle(label: _labels[i], isRead: _days[i])),
           ),
           const SizedBox(height: 24),
-          Text(
-            _missedDayText(),
-            style: AppTextStyles.wrappedLabel.copyWith(fontSize: 16),
-          ),
+          Text(_missedDayText(),
+              style: AppTextStyles.wrappedLabel.copyWith(fontSize: 15),
+              textAlign: TextAlign.center),
         ],
       ),
     );
   }
 
   String _numberToWords(int n) {
-    const words = [
-      '', 'One', 'Two', 'Three', 'Four',
-      'Five', 'Six', 'Seven',
-    ];
+    const words = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'];
     if (n < words.length) return '${words[n]} days out of seven';
     return '$n days out of seven';
   }
 
   String _missedDayText() {
+    const fullDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     final missed = <String>[];
     for (int i = 0; i < _days.length; i++) {
-      if (!_days[i]) {
-        const fullDays = [
-          'Monday', 'Tuesday', 'Wednesday',
-          'Thursday', 'Friday', 'Saturday', 'Sunday',
-        ];
-        missed.add(fullDays[i]);
-      }
+      if (!_days[i]) missed.add(fullDays[i]);
     }
-    if (missed.isEmpty) return 'Perfect week! 🔥';
-    return 'Only ${missed.join(' & ')} got away from you.';
+    return missed.isEmpty ? 'Perfect week! 🔥' : 'Only ${missed.join(' & ')} got away from you.';
   }
 }
 
@@ -325,21 +420,17 @@ class _DayCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width:  44,
-      height: 44,
+      width:  44, height: 44,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color:  isRead ? AppColors.orange : Colors.grey.shade700,
-        shape:  BoxShape.circle,
+        color: isRead ? AppColors.orange : Colors.grey.shade700,
+        shape: BoxShape.circle,
       ),
       child: isRead
-          ? const Icon(Icons.check_rounded,
-              color: AppColors.textDark, size: 20)
-          : Center(
-              child: Text(label,
-                  style: AppTextStyles.labelMedium.copyWith(
-                      color: Colors.grey.shade400)),
-            ),
+          ? const Icon(Icons.check_rounded, color: AppColors.textDark, size: 20)
+          : Center(child: Text(label,
+              style: AppTextStyles.labelMedium
+                  .copyWith(color: Colors.grey.shade400))),
     );
   }
 }
@@ -357,24 +448,18 @@ class _SlidePeakHour extends StatelessWidget {
         children: [
           const _SlideLabel(text: 'YOUR PEAK HOUR'),
           const SizedBox(height: 32),
-          // Clock circle with orange arc at 9pm position
           SizedBox(
-            width:  160,
-            height: 160,
-            child: CustomPaint(
-              painter: _ClockPainter(),
-            ),
+            width: 160, height: 160,
+            child: CustomPaint(painter: _ClockPainter()),
           ),
           const SizedBox(height: 24),
-          Text('9 PM',
-              style: AppTextStyles.wrappedStat.copyWith(fontSize: 56)),
+          Text('9 PM', style: AppTextStyles.wrappedStat.copyWith(fontSize: 56)),
           const SizedBox(height: 12),
           Text('Night owl mode',
-              style: AppTextStyles.headingMedium.copyWith(
-                  color: AppColors.white)),
+              style: AppTextStyles.headingMedium.copyWith(color: AppColors.white)),
           const SizedBox(height: 8),
           Text('Most of your reading happens after dinner.',
-              style: AppTextStyles.wrappedLabel.copyWith(fontSize: 15),
+              style: AppTextStyles.wrappedLabel.copyWith(fontSize: 14),
               textAlign: TextAlign.center),
         ],
       ),
@@ -382,31 +467,22 @@ class _SlidePeakHour extends StatelessWidget {
   }
 }
 
-// Clock face painter
 class _ClockPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Grey track ring
-    canvas.drawCircle(
-      center, radius,
-      Paint()
-        ..color       = Colors.white.withValues(alpha: 0.15)
-        ..style       = PaintingStyle.stroke
-        ..strokeWidth = 12,
-    );
-
-    // Orange arc — 9pm = 270° from top = -90° + 270° = 180°
-    // Start at top (-π/2), sweep to 9pm position
-    const double startAngle = -math.pi / 2; // top
-    const double sweepAngle = math.pi;       // half circle (6 hours → 9pm)
+    canvas.drawCircle(center, radius,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 12);
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
+      -math.pi / 2,
+      math.pi,
       false,
       Paint()
         ..color       = AppColors.orange
@@ -415,26 +491,19 @@ class _ClockPainter extends CustomPainter {
         ..strokeCap   = StrokeCap.round,
     );
 
-    // Tick marks
     for (int i = 0; i < 12; i++) {
-      final angle  = (i / 12) * 2 * math.pi - math.pi / 2;
-      final outer  = Offset(
-        center.dx + radius * math.cos(angle),
-        center.dy + radius * math.sin(angle),
+      final angle = (i / 12) * 2 * math.pi - math.pi / 2;
+      canvas.drawLine(
+        Offset(center.dx + radius * math.cos(angle),
+               center.dy + radius * math.sin(angle)),
+        Offset(center.dx + (radius - 10) * math.cos(angle),
+               center.dy + (radius - 10) * math.sin(angle)),
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.3)
+          ..strokeWidth = 1.5,
       );
-      final inner  = Offset(
-        center.dx + (radius - 10) * math.cos(angle),
-        center.dy + (radius - 10) * math.sin(angle),
-      );
-      canvas.drawLine(outer, inner,
-          Paint()
-            ..color       = Colors.white.withValues(alpha: 0.3)
-            ..strokeWidth = 1.5);
     }
-
-    // Centre dot
-    canvas.drawCircle(center, 5,
-        Paint()..color = AppColors.orange);
+    canvas.drawCircle(center, 5, Paint()..color = AppColors.orange);
   }
 
   @override
@@ -447,27 +516,23 @@ class _ClockPainter extends CustomPainter {
 class _SlideTopBook extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const double progress = 0.46; // 46% through Psalms
-
+    const double progress = 0.46;
     return _SlideBase(
       gradientColors: const [Color(0xFF7A2000), Color(0xFF3D1000)],
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.paddingXl),
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingXl),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:  MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _SlideLabel(text: 'YOUR TOP BOOK'),
             const SizedBox(height: 24),
             Text('Psalms',
-                style: AppTextStyles.wrappedStat.copyWith(
-                    color: AppColors.white)),
+                style: AppTextStyles.wrappedStat.copyWith(color: AppColors.white)),
             const SizedBox(height: 12),
             Text('${MockData.chaptersThisWeek} chapters this week',
                 style: AppTextStyles.wrappedLabel),
             const SizedBox(height: 20),
-            // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
@@ -478,11 +543,9 @@ class _SlideTopBook extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              "You're ${(progress * 100).round()}% through the book.",
-              style: AppTextStyles.wrappedLabel.copyWith(
-                  color: AppColors.orange, fontSize: 16),
-            ),
+            Text("You're ${(progress * 100).round()}% through the book.",
+                style: AppTextStyles.wrappedLabel.copyWith(
+                    color: AppColors.orange, fontSize: 16)),
           ],
         ),
       ),
@@ -501,33 +564,25 @@ class _SlideStreakAchievement extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Flame icon
-          const Icon(
-            Icons.local_fire_department_rounded,
-            color: AppColors.orange,
-            size:  96,
-          ),
+          const Icon(Icons.local_fire_department_rounded,
+              color: AppColors.orange, size: 96),
           const SizedBox(height: 24),
           Text('7-day streak',
               style: AppTextStyles.wrappedStat.copyWith(
                   fontSize: 44, color: AppColors.white)),
           const SizedBox(height: 12),
-          Text(
-            'A full week. The flame is yours.',
-            style: AppTextStyles.wrappedLabel.copyWith(
-                color: AppColors.orange),
-            textAlign: TextAlign.center,
-          ),
-          // Decorative scattered dots — matches the design
+          Text('A full week. The flame is yours.',
+              style: AppTextStyles.wrappedLabel.copyWith(color: AppColors.orange),
+              textAlign: TextAlign.center),
           const SizedBox(height: 40),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _Dot(color: AppColors.orange, size: 10),
-              _Dot(color: AppColors.orange.withValues(alpha: 0.6), size: 7),
-              _Dot(color: Colors.white, size: 8),
-              _Dot(color: AppColors.orange, size: 12),
-              _Dot(color: Colors.white.withValues(alpha: 0.5), size: 6),
+              _Dot(color: AppColors.orange,                          size: 10),
+              _Dot(color: AppColors.orange.withValues(alpha: 0.6),   size: 7),
+              _Dot(color: Colors.white,                              size: 8),
+              _Dot(color: AppColors.orange,                          size: 12),
+              _Dot(color: Colors.white.withValues(alpha: 0.5),       size: 6),
             ],
           ),
         ],
@@ -537,21 +592,19 @@ class _SlideStreakAchievement extends StatelessWidget {
 }
 
 class _Dot extends StatelessWidget {
-  final Color  color;
+  final Color color;
   final double size;
   const _Dot({required this.color, required this.size});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
 }
 
 // ════════════════════════════════════════════════════════════
-//  SLIDE 5 — WRAPPED SUMMARY (last slide)
+//  SLIDE 5 — WRAPPED SUMMARY
 // ════════════════════════════════════════════════════════════
 class _SlideWrappedSummary extends StatelessWidget {
   final VoidCallback onDone;
@@ -562,12 +615,10 @@ class _SlideWrappedSummary extends StatelessWidget {
     return _SlideBase(
       gradientColors: const [Color(0xFF2D1B69), Color(0xFF1A0F4A)],
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.paddingLg),
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLg),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Orange summary card
             Container(
               width:   double.infinity,
               padding: const EdgeInsets.all(AppConstants.paddingLg),
@@ -577,25 +628,24 @@ class _SlideWrappedSummary extends StatelessWidget {
                   begin:  Alignment.topLeft,
                   end:    Alignment.bottomRight,
                 ),
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radiusLg),
+                borderRadius: BorderRadius.circular(AppConstants.radiusLg),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Yahweh Wrapped',
-                      style: AppTextStyles.headingMedium.copyWith(
-                          color: AppColors.textDark)),
+                      style: AppTextStyles.headingMedium
+                          .copyWith(color: AppColors.textDark)),
                   Text('Week of 12 Oct',
-                      style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textDark)),
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textDark)),
                   const SizedBox(height: 16),
                   Text('${MockData.chaptersThisWeek}',
                       style: AppTextStyles.streakHero.copyWith(
                           color: AppColors.textDark, fontSize: 48)),
                   Text('chapters',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textDark)),
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(color: AppColors.textDark)),
                   const SizedBox(height: 8),
                   Text('7-day streak · Night owl',
                       style: AppTextStyles.labelMedium.copyWith(
@@ -605,32 +655,21 @@ class _SlideWrappedSummary extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Share button
             AppButton(
               label: 'Share your Wrapped',
-              onTap: () {
-                // TODO: share image/screenshot
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Sharing coming soon!'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Done text button
-            GestureDetector(
-              onTap: onDone,
-              child: Text(
-                'Done',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color:      AppColors.white,
-                  decoration: TextDecoration.none,
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content:  Text('Sharing coming soon!'),
+                  behavior: SnackBarBehavior.floating,
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: onDone,
+              child: Text('Done',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.white)),
             ),
           ],
         ),

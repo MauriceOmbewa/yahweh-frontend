@@ -1,24 +1,11 @@
 // ============================================================
 // FILE: lib/features/read/verse_context_menu.dart
 //
-// PURPOSE: The bottom sheet shown when a user long-presses
-//          a verse in the Bible reader.
+// PURPOSE: Bottom sheet shown when a user long-presses a verse.
 //
-// WHAT IT SHOWS (from the design):
-//   ─── drag handle ─────────────────────────
-//   Genesis 1:1              ← orange reference
-//   ● ● ● ● ● ●              ← 6 highlight color circles
-//   ──────────────────────────
-//   Bookmark
-//   ──────────────────────────
-//   Add note
-//   ──────────────────────────
-//   Share as post
-//   ──────────────────────────
-//   Copy
-//
-// HOW TO OPEN:
-//   VerseContextMenu.show(context, verse: myVerse, onAction: ...)
+// THEME: Light background (white) — matches all other screens.
+//        The design screenshot shows this as dark — we keep it
+//        light until told otherwise.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -29,7 +16,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/bible_verse.dart';
 
-// Actions the user can take on a verse
 enum VerseAction { highlight, bookmark, addNote, shareAsPost, copy }
 
 class VerseContextMenu extends StatelessWidget {
@@ -49,7 +35,7 @@ class VerseContextMenu extends StatelessWidget {
   }) {
     showModalBottomSheet(
       context:         context,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.white, // ← light
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppConstants.radiusXl)),
@@ -62,7 +48,7 @@ class VerseContextMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: AppColors.white,           // ← light
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppConstants.radiusXl)),
       ),
@@ -76,14 +62,14 @@ class VerseContextMenu extends StatelessWidget {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color:        Colors.white.withValues(alpha: 0.2),
+                  color:        AppColors.divider, // ← light divider
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
           ),
 
-          // Verse reference header
+          // Verse reference (orange)
           Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppConstants.paddingMd, vertical: 8),
@@ -107,8 +93,8 @@ class VerseContextMenu extends StatelessWidget {
                         highlightColor: color);
                   },
                   child: Container(
-                    width:  36,
-                    height: 36,
+                    width:  38,
+                    height: 38,
                     margin: const EdgeInsets.only(right: 10),
                     decoration: BoxDecoration(
                       color: color,
@@ -120,10 +106,8 @@ class VerseContextMenu extends StatelessWidget {
             ),
           ),
 
-          Divider(color: Colors.white.withValues(alpha: 0.1),
-              height: 1),
+          const Divider(height: 1),
 
-          // Menu items
           _MenuItem(
             label: 'Bookmark',
             icon:  Icons.bookmark_outline_rounded,
@@ -132,8 +116,7 @@ class VerseContextMenu extends StatelessWidget {
               onAction?.call(VerseAction.bookmark);
             },
           ),
-          Divider(color: Colors.white.withValues(alpha: 0.1),
-              height: 1),
+          const Divider(height: 1),
           _MenuItem(
             label: 'Add note',
             icon:  Icons.edit_note_rounded,
@@ -142,8 +125,7 @@ class VerseContextMenu extends StatelessWidget {
               onAction?.call(VerseAction.addNote);
             },
           ),
-          Divider(color: Colors.white.withValues(alpha: 0.1),
-              height: 1),
+          const Divider(height: 1),
           _MenuItem(
             label: 'Share as post',
             icon:  Icons.share_rounded,
@@ -152,15 +134,15 @@ class VerseContextMenu extends StatelessWidget {
               onAction?.call(VerseAction.shareAsPost);
             },
           ),
-          Divider(color: Colors.white.withValues(alpha: 0.1),
-              height: 1),
+          const Divider(height: 1),
           _MenuItem(
             label: 'Copy',
             icon:  Icons.copy_rounded,
             onTap: () {
               Navigator.pop(context);
               Clipboard.setData(ClipboardData(
-                  text: '${verse.text} — ${verse.referenceWithTranslation}'));
+                  text:
+                      '${verse.text} — ${verse.referenceWithTranslation}'));
               onAction?.call(VerseAction.copy);
             },
           ),
@@ -171,13 +153,13 @@ class VerseContextMenu extends StatelessWidget {
   }
 }
 
-// ── Menu item row ─────────────────────────────────────────────
+// ── Menu item ─────────────────────────────────────────────────
 class _MenuItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _MenuItem({required this.label, required this.icon,
-      required this.onTap});
+  const _MenuItem(
+      {required this.label, required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -189,11 +171,10 @@ class _MenuItem extends StatelessWidget {
             horizontal: AppConstants.paddingMd, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.white, size: 20),
+            Icon(icon, color: AppColors.textDark, size: 20), // ← dark icon
             const SizedBox(width: 14),
             Text(label,
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.white)),
+                style: AppTextStyles.bodyMedium), // ← dark text
           ],
         ),
       ),

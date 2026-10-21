@@ -139,16 +139,19 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller:  _scrollController,
-              padding:     const EdgeInsets.symmetric(
-                horizontal: AppConstants.paddingMd,
-                vertical:   AppConstants.paddingSm,
+            child: Container(
+              color: AppColors.white, // ← explicit white so no dark bleed
+              child: ListView.builder(
+                controller:  _scrollController,
+                padding:     const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingMd,
+                  vertical:   AppConstants.paddingSm,
+                ),
+                itemCount:   _messages.length,
+                itemBuilder: (context, index) {
+                  return _buildMessageItem(_messages[index]);
+                },
               ),
-              itemCount:   _messages.length,
-              itemBuilder: (context, index) {
-                return _buildMessageItem(_messages[index]);
-              },
             ),
           ),
 
