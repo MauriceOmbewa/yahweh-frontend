@@ -31,6 +31,7 @@ import '../../core/widgets/verse_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/user.dart';
 import '../../navigation/app_router.dart';
+import '../status/status_story_screen.dart';
 
 class FeedScreen extends StatelessWidget {
   final VoidCallback? onNotificationsTap;
@@ -136,18 +137,19 @@ class FeedScreen extends StatelessWidget {
 // ════════════════════════════════════════════════════════════
 //  FRIEND STORY CIRCLES ROW
 // ════════════════════════════════════════════════════════════
-// The horizontal scrolling row of friend avatars at the top
-// of the Feed — exactly like in the designs.
 class _FriendStoriesRow extends StatelessWidget {
   final List<User> friends;
   const _FriendStoriesRow({required this.friends});
 
   @override
   Widget build(BuildContext context) {
+    // Build statuses once for the whole row so we can pass the
+    // full list to the story viewer (swipe through all friends).
+    final statuses = buildMockStatuses(friends);
+
     return SizedBox(
-      height: 90, // Fixed height: avatar + name label
+      height: 90,
       child: ListView.builder(
-        // Horizontal scroll
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.paddingMd,
@@ -155,7 +157,36 @@ class _FriendStoriesRow extends StatelessWidget {
         ),
         itemCount: friends.length,
         itemBuilder: (context, index) {
-          return _FriendStoryItem(user: friends[index]);
+          // Find this friend's status (if any)
+          final friendStatuses = statuses
+              .where((s) => s.author.id == friends[index].id)
+              .toList();
+          final hasActiveStatus =
+              friendStatuses.isNotEmpty && friendStatuses.first.isActive;
+
+          return _FriendStoryItem(
+            user:           friends[index],
+            hasActiveStatus: hasActiveStatus,
+            onTap: () {
+              if (hasActiveStatus) {
+                // Open story viewer starting at this friend's story
+                final startIdx = statuses
+                    .indexWhere((s) => s.author.id == friends[index].id);
+                StatusStoryScreen.show(
+                  context,
+                  stories:      statuses.where((s) => s.isActive).toList(),
+                  initialIndex: startIdx.clamp(0, statuses.length - 1),
+                );
+              } else {
+                // No status — open their profile instead
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.otherProfile,
+                  arguments: friends[index],
+                );
+              }
+            },
+          );
         },
       ),
     );
@@ -165,34 +196,35 @@ class _FriendStoriesRow extends StatelessWidget {
 // ── Single story circle item ──────────────────────────────────
 class _FriendStoryItem extends StatelessWidget {
   final User user;
-  const _FriendStoryItem({required this.user});
+  final bool hasActiveStatus;
+  final VoidCallback onTap;
+
+  const _FriendStoryItem({
+    required this.user,
+    required this.hasActiveStatus,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // First name only (e.g. "Amina Njeri" → "Amina")
     final firstName = user.displayName.split(' ').first;
 
     return Padding(
       padding: const EdgeInsets.only(right: 16),
       child: Column(
-        mainAxisSize:  MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Avatar circle with orange ring + streak badge
+          // Orange ring = has active status (like WhatsApp green ring)
+          // Grey ring  = no active status
           UserAvatar(
             initials:       user.initials,
             streakCount:    user.currentStreak,
-            size:           AppConstants.avatarSm + 8, // 44px
-            isStreakActive: user.hasReadToday,
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.otherProfile,
-                arguments: user,
-              );
-            },
+            size:           AppConstants.avatarSm + 8,
+            isStreakActive: hasActiveStatus,  // orange = has status
+            showRing:       true,
+            onTap:          onTap,
           ),
           const SizedBox(height: 4),
-          // First name label below the circle
           Text(
             firstName,
             style: AppTextStyles.labelSmall.copyWith(
