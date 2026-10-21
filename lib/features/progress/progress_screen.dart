@@ -17,6 +17,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/mock_data.dart';
+import '../wrapped/wrapped_screen.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -61,6 +62,50 @@ class ProgressScreen extends StatelessWidget {
 
                 // 4. Peak reading hours
                 _PeakHoursCard(),
+                const SizedBox(height: 16),
+
+                // 5. View Wrapped button
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const WrappedScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppConstants.paddingMd),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3D2B82), Color(0xFF1A0F4A)],
+                        begin:  Alignment.topLeft,
+                        end:    Alignment.bottomRight,
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusLg),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Yahweh Wrapped',
+                                style: AppTextStyles.labelMedium
+                                    .copyWith(color: AppColors.orange)),
+                            const SizedBox(height: 4),
+                            Text('See your week in review',
+                                style: AppTextStyles.bodySmall
+                                    .copyWith(
+                                        color: AppColors.white
+                                            .withValues(alpha: 0.8))),
+                          ],
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded,
+                            color: AppColors.white, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: AppConstants.paddingXl),
               ],
             ),

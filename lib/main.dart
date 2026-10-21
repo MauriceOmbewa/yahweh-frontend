@@ -40,6 +40,8 @@ import 'features/notifications/notifications_screen.dart';
 import 'features/messages/messages_screen.dart';
 // Read
 import 'features/read/bookmarks_screen.dart';
+// Wrapped
+import 'features/wrapped/wrapped_screen.dart';
 
 // main() is the very first function Flutter calls.
 void main() {
@@ -96,6 +98,7 @@ class YahwehApp extends StatelessWidget {
         AppRoutes.notifications:   (context) => const NotificationsScreen(),
         AppRoutes.messages:        (context) => const MessagesScreen(),
         AppRoutes.bookmarks:       (context) => const BookmarksScreen(),
+        AppRoutes.wrapped:         (context) => const WrappedScreen(),
       },
     );
   }
