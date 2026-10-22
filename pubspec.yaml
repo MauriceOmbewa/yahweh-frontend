@@ -33,6 +33,14 @@ dependencies:
   # ── Default Flutter Icons ───────────────────────────────────
   cupertino_icons: ^1.0.8
 
+  # ── Networking ───────────────────────────────────────────────
+  # http: standard Dart HTTP client for making REST API calls
+  http: ^1.2.2
+
+  # ── Persistent Storage ───────────────────────────────────────
+  # shared_preferences: stores JWT tokens and user prefs on device
+  shared_preferences: ^2.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

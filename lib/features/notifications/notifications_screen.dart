@@ -13,6 +13,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -20,6 +21,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../data/mock_data.dart';
 import '../../models/app_notification.dart';
+import '../../services/notification_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -39,6 +41,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _markAllRead() {
+    // Call real API first, then update local state
+    try {
+      context.read<NotificationService>().markAllRead();
+    } catch (_) {}
     setState(() {
       _notifications = _notifications
           .map((n) => AppNotification(

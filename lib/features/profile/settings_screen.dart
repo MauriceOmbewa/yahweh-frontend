@@ -13,10 +13,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
+import '../../navigation/app_router.dart';
+import '../../providers/auth_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -35,6 +38,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
@@ -68,9 +74,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SectionCard(
                   label: 'ACCOUNT',
                   children: [
-                    _RowTile(label: 'Display name', value: 'Maurice'),
-                    _RowTile(label: 'Timezone',     value: 'Nairobi'),
-                    _RowTile(label: 'Password',     value: 'Change',
+                    _RowTile(label: 'Display name',
+                        value: user?['displayName'] as String? ?? '—'),
+                    _RowTile(label: 'Timezone',
+                        value: user?['timezone'] as String? ?? '—'),
+                    _RowTile(label: 'Password', value: 'Change',
                         onTap: () {}),
                   ],
                 ),
@@ -156,9 +164,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ActionTile(
                   label:     'Log out',
                   color:     AppColors.textDark,
-                  onTap: () {
+                  onTap: () async {
+                    await context.read<AuthProvider>().logout();
+                    if (!context.mounted) return;
                     Navigator.pushNamedAndRemoveUntil(
-                      context, '/', (route) => false);
+                        context, AppRoutes.welcome, (route) => false);
                   },
                 ),
                 const SizedBox(height: 8),

@@ -1,17 +1,11 @@
 // ============================================================
 // FILE: lib/features/auth/signup_screen.dart
-//
-// PURPOSE: The "Create account" screen.
-//
-// RESPONSIVE BEHAVIOUR:
-//   Mobile  (<700px): Full-screen lavender scaffold, fields fill width.
-//   Wide   (>=700px): Fields sit inside a centred white card
-//                     (max 480px wide) on the lavender background,
-//                     matching the screenshot exactly.
+// PURPOSE: Create account — calls AuthProvider.register()
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -20,10 +14,10 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/responsive.dart';
 import '../../navigation/app_router.dart';
+import '../../providers/auth_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
-
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
@@ -32,7 +26,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController       = TextEditingController();
   final _displayNameController = TextEditingController();
   final _passwordController    = TextEditingController();
-  bool _showPasswordError      = false;
+  bool _isLoading = false;
+  String? _serverError;
 
   @override
   void dispose() {
@@ -42,66 +37,71 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _onSignUpPressed() {
-    if (_passwordController.text.length < 8) {
-      setState(() => _showPasswordError = true);
+  // ── Validate locally, then call API ───────────────────────
+  Future<void> _onSignUp() async {
+    setState(() => _serverError = null);
+
+    final email    = _emailController.text.trim();
+    final name     = _displayNameController.text.trim();
+    final password = _passwordController.text;
+
+    // Local validation
+    if (email.isEmpty || name.isEmpty || password.isEmpty) {
+      setState(() => _serverError = 'Please fill in all fields.');
       return;
     }
-    setState(() => _showPasswordError = false);
-    Navigator.pushNamed(context, AppRoutes.timezone);
+    if (password.length < 12) {
+      setState(() => _serverError =
+          'Password must be at least 12 characters.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final auth    = context.read<AuthProvider>();
+    final success = await auth.register(
+      email:       email,
+      displayName: name,
+      password:    password,
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      // Registration succeeded — go to timezone picker
+      Navigator.pushNamed(context, AppRoutes.timezone);
+    } else {
+      setState(() => _serverError = auth.error);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isWide = Responsive.isWide(context);
-
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-
-      // ── App Bar ─────────────────────────────────────────────
-      // On wide screens the back arrow + title sit in the appbar
-      // above the centred card, left-aligned like in the screenshot.
       appBar: AppBar(
         backgroundColor: AppColors.backgroundLight,
-        elevation:       0,
+        elevation:        0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textDark,
-            size:  18,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: AppColors.textDark, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Create account',
-          style: GoogleFonts.playfairDisplay(
-            fontSize:   26,
-            fontWeight: FontWeight.w700,
-            color:      AppColors.textDark,
-          ),
-        ),
+        title: Text('Create account',
+            style: GoogleFonts.playfairDisplay(
+                fontSize: 26, fontWeight: FontWeight.w700,
+                color: AppColors.textDark)),
         titleSpacing: 0,
       ),
-
-      // ── Body ─────────────────────────────────────────────────
-      body: isWide
-          ? _buildWideBody()   // Centred white card
-          : _buildMobileBody(), // Full-width mobile form
+      body: isWide ? _buildWideBody() : _buildMobileBody(),
     );
   }
 
-  // ── Mobile layout ────────────────────────────────────────────
-  Widget _buildMobileBody() {
-    return SingleChildScrollView(
+  Widget _buildMobileBody() => SingleChildScrollView(
       padding: const EdgeInsets.all(AppConstants.paddingLg),
-      child: _formContent(),
-    );
-  }
+      child:   _form());
 
-  // ── Wide layout ──────────────────────────────────────────────
-  // Centres a white rounded card on the lavender background.
-  Widget _buildWideBody() {
-    return Center(
+  Widget _buildWideBody() => Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: ConstrainedBox(
@@ -109,63 +109,53 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Container(
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
-              color:        AppColors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: _formContent(),
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(24)),
+            child: _form(),
           ),
         ),
-      ),
-    );
-  }
+      ));
 
-  // ── Shared form content ──────────────────────────────────────
-  // Exactly the same fields on both layouts — no duplication.
-  Widget _formContent() {
+  Widget _form() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-
         AppTextField(
-          label:           'Email',
-          hint:            'you@example.com',
-          controller:      _emailController,
-          keyboardType:    TextInputType.emailAddress,
+          label: 'Email', hint: 'you@example.com',
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: 20),
-
         AppTextField(
-          label:           'Display name',
-          hint:            'How friends see you',
-          controller:      _displayNameController,
+          label: 'Display name', hint: 'How friends see you',
+          controller: _displayNameController,
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: 20),
-
         AppTextField(
-          label:           'Password',
-          hint:            'At least 8 characters',
-          controller:      _passwordController,
-          isPassword:      true,
+          label: 'Password', hint: 'At least 12 characters',
+          controller: _passwordController,
+          isPassword: true,
           textInputAction: TextInputAction.done,
-          onSubmitted:     _onSignUpPressed,
-          errorText: _showPasswordError
-              ? 'Password needs at least 8 characters.'
-              : null,
+          onSubmitted: _onSignUp,
         ),
-        const SizedBox(height: 28),
 
-        AppButton(label: 'Sign up', onTap: _onSignUpPressed),
-        const SizedBox(height: 14),
-
-        _GoogleButton(onTap: () {}),
+        // ── Server error ─────────────────────────────────────
+        if (_serverError != null) ...[
+          const SizedBox(height: 8),
+          Text(_serverError!, style: AppTextStyles.errorText),
+        ],
         const SizedBox(height: 24),
 
+        AppButton(label: 'Sign up', onTap: _onSignUp,
+            isLoading: _isLoading),
+        const SizedBox(height: 14),
+        _GoogleButton(onTap: () {}),
+        const SizedBox(height: 24),
         _AuthSwitchRow(
-          question:    'Have an account?',
-          actionLabel: 'Log in',
+          question: 'Have an account?', actionLabel: 'Log in',
           onTap: () => Navigator.pushReplacementNamed(
               context, AppRoutes.login),
         ),
@@ -174,87 +164,60 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 }
 
-// ════════════════════════════════════════════════════════════
-//  SHARED AUTH WIDGETS
-//  (used by SignupScreen, LoginScreen, and TimezoneScreen)
-// ════════════════════════════════════════════════════════════
-
-// ── Google Button ─────────────────────────────────────────────
+// ── Shared auth widgets ───────────────────────────────────────
 class _GoogleButton extends StatelessWidget {
   final VoidCallback onTap;
   const _GoogleButton({required this.onTap});
-
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width:  double.infinity,
-      height: AppConstants.buttonHeight,
-      child: Material(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.radiusXl),
-        child: InkWell(
-          onTap:        onTap,
-          borderRadius: BorderRadius.circular(AppConstants.radiusXl),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppConstants.radiusXl),
-              border: Border.all(color: AppColors.divider, width: 1.5),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('G',
-                    style: AppTextStyles.buttonLabel.copyWith(
-                        fontSize: 18, color: AppColors.textDark)),
-                const SizedBox(width: 10),
-                Text('Continue with Google',
-                    style: AppTextStyles.buttonLabel.copyWith(
-                        color: AppColors.textDark)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Auth Switch Row ────────────────────────────────────────────
-class _AuthSwitchRow extends StatelessWidget {
-  final String question;
-  final String actionLabel;
-  final VoidCallback onTap;
-
-  const _AuthSwitchRow({
-    required this.question,
-    required this.actionLabel,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: GestureDetector(
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity, height: AppConstants.buttonHeight,
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppConstants.radiusXl),
+      child: InkWell(
         onTap: onTap,
-        child: RichText(
-          text: TextSpan(
+        borderRadius: BorderRadius.circular(AppConstants.radiusXl),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppConstants.radiusXl),
+            border: Border.all(color: AppColors.divider, width: 1.5)),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TextSpan(
-                text:  '$question ',
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textMedium),
-              ),
-              TextSpan(
-                text:  actionLabel,
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.primaryPurple,
-                    fontWeight: FontWeight.w700),
-              ),
+              Text('G', style: AppTextStyles.buttonLabel.copyWith(
+                  fontSize: 18, color: AppColors.textDark)),
+              const SizedBox(width: 10),
+              Text('Continue with Google',
+                  style: AppTextStyles.buttonLabel.copyWith(
+                      color: AppColors.textDark)),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _AuthSwitchRow extends StatelessWidget {
+  final String question, actionLabel;
+  final VoidCallback onTap;
+  const _AuthSwitchRow({required this.question,
+      required this.actionLabel, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: GestureDetector(
+      onTap: onTap,
+      child: RichText(text: TextSpan(children: [
+        TextSpan(text: '$question ',
+            style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textMedium)),
+        TextSpan(text: actionLabel,
+            style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primaryPurple,
+                fontWeight: FontWeight.w700)),
+      ])),
+    ),
+  );
 }

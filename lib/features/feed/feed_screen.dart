@@ -22,6 +22,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -30,7 +31,10 @@ import '../../core/widgets/user_avatar.dart';
 import '../../core/widgets/verse_card.dart';
 import '../../data/mock_data.dart';
 import '../../models/user.dart';
+import '../../models/post.dart';
+import '../../models/bible_verse.dart';
 import '../../navigation/app_router.dart';
+import '../../providers/feed_provider.dart';
 import '../status/status_story_screen.dart';
 
 class FeedScreen extends StatelessWidget {
@@ -94,42 +98,159 @@ class FeedScreen extends StatelessWidget {
       ),
 
       // ── Body ─────────────────────────────────────────────────
-      body: CustomScrollView(
-        // CustomScrollView lets us mix different types of
-        // scrollable content (slivers) in one scroll area.
-        slivers: [
-          // ── Friend Story Circles ─────────────────────────────
-          SliverToBoxAdapter(
-            child: _FriendStoriesRow(friends: MockData.friends),
-          ),
+      body: _FeedBody(
+        friends:           MockData.friends,
+        onNotificationsTap: onNotificationsTap,
+        onMessagesTap:      onMessagesTap,
+      ),
+    );
+  }
+}
 
-          // ── Gap between stories and first card ───────────────
+// ════════════════════════════════════════════════════════════
+//  FEED BODY — loads real posts from FeedProvider
+// ════════════════════════════════════════════════════════════
+class _FeedBody extends StatefulWidget {
+  final List<User>     friends;
+  final VoidCallback?  onNotificationsTap;
+  final VoidCallback?  onMessagesTap;
+
+  const _FeedBody({
+    required this.friends,
+    this.onNotificationsTap,
+    this.onMessagesTap,
+  });
+
+  @override
+  State<_FeedBody> createState() => _FeedBodyState();
+}
+
+class _FeedBodyState extends State<_FeedBody> {
+  @override
+  void initState() {
+    super.initState();
+    // Load posts when screen first appears
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FeedProvider>().loadFeed();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feed = context.watch<FeedProvider>();
+
+    return RefreshIndicator(
+      color: AppColors.orange,
+      onRefresh: () => context.read<FeedProvider>().loadFeed(),
+      child: CustomScrollView(
+        slivers: [
+          // Story circles
+          SliverToBoxAdapter(
+            child: _FriendStoriesRow(friends: widget.friends),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-          // ── Feed Post Cards ───────────────────────────────────
-          // SliverList efficiently renders a scrollable list —
-          // it only builds cards that are currently on screen.
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final post = MockData.feedPosts[index];
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppConstants.paddingMd,
-                    index == 0 ? 0 : AppConstants.paddingSm,
-                    AppConstants.paddingMd,
-                    index == MockData.feedPosts.length - 1
-                        ? AppConstants.paddingXl // Extra space at the bottom
-                        : 0,
-                  ),
-                  child: VerseCard(post: post),
-                );
-              },
-              childCount: MockData.feedPosts.length,
+          // Loading state
+          if (feed.isLoading && feed.posts.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator(
+                    color: AppColors.orange)),
+              ),
+            )
+
+          // Error state with fallback to mock data
+          else if (feed.error != null && feed.posts.isEmpty)
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final post = MockData.feedPosts[index];
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        AppConstants.paddingMd,
+                        index == 0 ? 0 : AppConstants.paddingSm,
+                        AppConstants.paddingMd,
+                        index == MockData.feedPosts.length - 1
+                            ? AppConstants.paddingXl : 0),
+                    child: VerseCard(post: post),
+                  );
+                },
+                childCount: MockData.feedPosts.length,
+              ),
+            )
+
+          // Real posts from API
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == feed.posts.length) {
+                    // Load more trigger
+                    if (feed.hasMore) {
+                      context.read<FeedProvider>().loadMore();
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator(
+                            color: AppColors.orange, strokeWidth: 2)),
+                      );
+                    }
+                    return const SizedBox(height: AppConstants.paddingXl);
+                  }
+
+                  final apiPost = feed.posts[index];
+                  // Convert API post to local Post model for VerseCard
+                  final post = _apiToPost(apiPost);
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        AppConstants.paddingMd,
+                        index == 0 ? 0 : AppConstants.paddingSm,
+                        AppConstants.paddingMd, 0),
+                    child: VerseCard(post: post),
+                  );
+                },
+                childCount: feed.posts.length + 1,
+              ),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  // Convert API FeedPost → local Post model that VerseCard expects
+  Post _apiToPost(FeedPost fp) {
+    return Post(
+      id:     fp.id,
+      author: User(
+        id:            fp.authorId,
+        displayName:   fp.authorName,
+        email:         '',
+        initials:      fp.authorName.split(' ')
+            .map((w) => w.isNotEmpty ? w[0] : '')
+            .take(2).join().toUpperCase(),
+        currentStreak:  0,
+        longestStreak:  0,
+        chaptersRead:   0,
+        timezone:       '',
+        joinedAt:       fp.createdAt,
+        hasReadToday:   false,
+      ),
+      verse: BibleVerse(
+        book:        fp.verseId.split('.').first,
+        chapter:     1,
+        startVerse:  1,
+        text:        fp.verseText,
+        translation: fp.bibleId.contains('NIV') ? 'NIV' : 'Bible',
+      ),
+      caption:      fp.caption,
+      postedAt:     fp.createdAt,
+      visibility:   fp.visibility == 'PUBLIC'
+          ? PostVisibility.public : PostVisibility.friendsOnly,
+      amenCount:    fp.amenCount,
+      heartCount:   fp.heartCount,
+      fireCount:    fp.fireCount,
+      prayCount:    fp.prayCount,
+      commentCount: fp.commentCount,
     );
   }
 }
