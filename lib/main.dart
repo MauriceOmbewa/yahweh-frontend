@@ -91,7 +91,8 @@ class YahwehApp extends StatelessWidget {
       home: const _AuthGate(),
 
       routes: {
-        AppRoutes.welcome:      (context) => const WelcomeScreen(),
+        // Note: '/' is NOT listed here because 'home: _AuthGate()' above
+        // already handles the root. Adding it here would conflict.
         AppRoutes.signup:       (context) => const SignupScreen(),
         AppRoutes.login:        (context) => const LoginScreen(),
         AppRoutes.timezone:     (context) => const TimezoneScreen(),
